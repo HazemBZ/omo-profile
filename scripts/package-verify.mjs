@@ -23,7 +23,8 @@ export function validateManifest(manifest) {
 }
 
 function packManifest() {
-  const output = execFileSync('pnpm', ['pack', '--dry-run'], {
+  const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  const output = execFileSync(pnpmCommand, ['pack', '--dry-run'], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
