@@ -70,7 +70,5 @@ jobs:
         run: node scripts/release-verify.mjs
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-      - name: Publish with provenance
-        run: pnpm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm with OIDC
+        run: npm publish --access public
