@@ -23,8 +23,10 @@ export function validateManifest(manifest) {
 }
 
 function packManifest() {
-  const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  const output = execFileSync(pnpmCommand, ['pack', '--dry-run'], {
+  const pnpmArgs = ['pack', '--dry-run'];
+  const command = process.platform === 'win32' ? process.env.ComSpec || 'cmd.exe' : 'pnpm';
+  const args = process.platform === 'win32' ? ['/d', '/s', '/c', 'pnpm.cmd', ...pnpmArgs] : pnpmArgs;
+  const output = execFileSync(command, args, {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
