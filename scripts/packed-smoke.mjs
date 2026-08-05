@@ -12,6 +12,12 @@ function run(command, args, options = {}) {
   }
 }
 
+function runPnpm(args, options = {}) {
+  const command = process.platform === 'win32' ? process.env.ComSpec || 'cmd.exe' : 'pnpm';
+  const commandArgs = process.platform === 'win32' ? ['/d', '/s', '/c', 'pnpm.cmd', ...args] : args;
+  return run(command, commandArgs, options);
+}
+
 const root = mkdtempSync(join(tmpdir(), 'omo-profile-packed-'));
 const packDir = join(root, 'pack output space');
 const prefix = join(root, 'install prefix unicode-✓');
@@ -25,12 +31,13 @@ writeFileSync(configPath, '{}\n');
 writeFileSync(join(profilesDir, 'packed.json'), JSON.stringify({ metadata: { name: 'packed' } }) + '\n');
 
 try {
-  run('pnpm', ['pack', '--pack-destination', packDir], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const pack = runPnpm(['pack', '--pack-destination', packDir], { stdio: ['ignore', 'pipe', 'pipe'] });
+  assert.equal(pack.exitCode, 0, `pack failed:\n${pack.stdout}\n${pack.stderr}`);
   const tarballs = readdirSync(packDir).filter(entry => entry.endsWith('.tgz'));
   assert.equal(tarballs.length, 1, 'pack must produce one tarball');
   const tarball = join(packDir, tarballs[0]);
 
-  const install = run('pnpm', ['add', '--prefix', prefix, '--ignore-scripts', tarball], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const install = runPnpm(['add', '--prefix', prefix, '--ignore-scripts', tarball], { stdio: ['ignore', 'pipe', 'pipe'] });
   assert.equal(install.exitCode, 0, `packed install failed:\n${install.stdout}\n${install.stderr}`);
 
   const binName = process.platform === 'win32' ? 'omo-profile.cmd' : 'omo-profile';
