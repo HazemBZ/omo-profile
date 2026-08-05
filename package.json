@@ -1,0 +1,47 @@
+{
+  "name": "omo-profile",
+  "version": "1.0.0",
+  "description": "Profile manager for Oh My OpenAgent agent model configurations",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HazemBZ/omo-profile.git"
+  },
+  "homepage": "https://github.com/HazemBZ/omo-profile#readme",
+  "bugs": {
+    "url": "https://github.com/HazemBZ/omo-profile/issues"
+  },
+  "keywords": [
+    "opencode",
+    "oh-my-openagent",
+    "agent",
+    "profiles",
+    "cli"
+  ],
+  "type": "module",
+  "bin": {
+    "omo-profile": "./agent-profile.mjs"
+  },
+  "scripts": {
+    "test": "node --test lib/profile-validator.test.mjs lib/profile-io.test.mjs lib/agent-profile.integration.test.mjs",
+    "test:unit": "node --test lib/profile-validator.test.mjs lib/profile-io.test.mjs",
+    "test:int": "node --test lib/agent-profile.integration.test.mjs",
+    "test:all": "node --test lib/profile-validator.test.mjs lib/profile-io.test.mjs lib/agent-profile.integration.test.mjs",
+    "verify:pack": "node scripts/package-verify.mjs",
+    "smoke:packed": "node scripts/packed-smoke.mjs"
+  },
+  "files": [
+    "agent-profile.mjs",
+    "lib/profile-io.mjs",
+    "lib/profile-validator.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@11.5.2",
+  "publishConfig": {
+    "access": "public"
+  }
+}
