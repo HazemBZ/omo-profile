@@ -18,6 +18,15 @@ function runPnpm(args, options = {}) {
   return run(command, commandArgs, options);
 }
 
+function runInstalledBinary(bin, args, options = {}) {
+  if (process.platform !== 'win32') return run(bin, args, options);
+  const commandString = `""${bin}" ${args.join(' ')}"`;
+  return run(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', commandString], {
+    ...options,
+    windowsVerbatimArguments: true,
+  });
+}
+
 const root = mkdtempSync(join(tmpdir(), 'omo-profile-packed-'));
 const packDir = join(root, 'pack output space');
 const prefix = join(root, 'install prefix unicode-✓');
@@ -44,15 +53,15 @@ try {
   const bin = join(prefix, 'node_modules', '.bin', binName);
   const env = { ...process.env, OMO_CONFIG_PATH: configPath, OMO_PROFILES_DIR: profilesDir };
 
-  const help = run(bin, ['help'], { env });
+  const help = runInstalledBinary(bin, ['help'], { env });
   assert.equal(help.exitCode, 0, `installed help failed:\n${help.stderr}`);
   assert.match(help.stdout, /Usage:/, 'installed generated binary must print Usage:');
 
-  const list = run(bin, ['list', '--json'], { env });
+  const list = runInstalledBinary(bin, ['list', '--json'], { env });
   assert.equal(list.exitCode, 0, `installed list failed:\n${list.stderr}`);
   assert.deepEqual(JSON.parse(list.stdout), { profiles: [{ id: 'packed', name: 'packed' }] });
 
-  const invalid = run(bin, ['invalid-command'], { env });
+  const invalid = runInstalledBinary(bin, ['invalid-command'], { env });
   assert.notEqual(invalid.exitCode, 0, 'installed invalid command must fail');
   assert.match(invalid.stderr, /Unknown command/);
 
