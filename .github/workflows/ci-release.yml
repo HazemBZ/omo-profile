@@ -14,7 +14,7 @@ jobs:
     name: Test ${{ matrix.os }} / Node ${{ matrix.node-version }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         node-version: ['18', '24']
@@ -24,7 +24,7 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 11.5.2
+          version: 10.33.4
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -58,7 +58,7 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 11.5.2
+          version: 10.33.4
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
