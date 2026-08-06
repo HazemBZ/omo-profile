@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+
+const BUNDLED_IDS = ['deepseek-v4-flash-free', 'gpt56-light', 'gpt56-mixed', 'gpt56-xlight'];
 
 function run(command, args, options = {}) {
   try {
@@ -59,7 +61,18 @@ try {
 
   const list = runInstalledBinary(bin, ['list', '--json'], { env });
   assert.equal(list.exitCode, 0, `installed list failed:\n${list.stderr}`);
-  assert.deepEqual(JSON.parse(list.stdout), { profiles: [{ id: 'packed', name: 'packed' }] });
+  const listed = JSON.parse(list.stdout).profiles;
+  const listedIds = listed.map(p => p.id);
+  assert.ok(listedIds.includes('packed'), `user profile "packed" must be listed, got: ${listedIds.join(', ')}`);
+  for (const id of BUNDLED_IDS) {
+    assert.ok(listedIds.includes(id), `bundled profile "${id}" must be listed, got: ${listedIds.join(', ')}`);
+    assert.ok(existsSync(join(profilesDir, `${id}.json`)), `bundled profile "${id}" must be seeded to disk`);
+  }
+
+  const dryRun = runInstalledBinary(bin, ['switch', 'gpt56-mixed', '--dry-run'], { env });
+  assert.equal(dryRun.exitCode, 0, `installed switch --dry-run failed:\n${dryRun.stderr}`);
+  assert.match(dryRun.stdout, /\[dry-run\]/, 'dry-run marker in output');
+  assert.match(dryRun.stdout, /Agent assignments/, 'agent assignments in dry-run output');
 
   const invalid = runInstalledBinary(bin, ['invalid-command'], { env });
   assert.notEqual(invalid.exitCode, 0, 'installed invalid command must fail');
@@ -68,6 +81,7 @@ try {
   console.log(`Installed generated binary: ${bin}`);
   console.log(`help: exit ${help.exitCode}\n${help.stdout.trim()}`);
   console.log(`list --json: exit ${list.exitCode}\n${list.stdout.trim()}`);
+  console.log(`switch --dry-run: exit ${dryRun.exitCode}\n${dryRun.stdout.trim()}`);
   console.log(`invalid command: exit ${invalid.exitCode}\n${invalid.stderr.trim()}`);
 } finally {
   rmSync(root, { recursive: true, force: true });
