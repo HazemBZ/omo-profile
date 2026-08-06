@@ -1,10 +1,29 @@
 name: CI and npm release
 
+# Trigger policy:
+#   - PRs run CI on code paths only (docs-only PRs skip the matrix).
+#   - Pushes to `main` run CI once (PRs already validated the same diff).
+#   - Case: tag pushes (v*) run CI + the npm release.
+#   - `concurrency` cancels superseded runs so rapid pushes don't pile up.
 on:
   push:
-    branches: ['**']
+    branches: ['main']
     tags: ['v*']
   pull_request:
+    paths:
+      - 'agent-profile.mjs'
+      - 'lib/**'
+      - 'scripts/**'
+      - 'profiles/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/**'
+      - '.github/workflows.yml'
+      - '.github/workflows.yaml'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -20,23 +39,28 @@ jobs:
         node-version: ['18', '24']
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 10.33.4
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Run unit tests
-        run: pnpm run test:unit
-      - name: Run integration tests
-        run: pnpm run test:int
-      - name: Run full test suite
+        # pnpm install is the network-heavy step most prone to transient
+        # registry flakes; retry it without masking real test failures.
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: pnpm install --frozen-lockfile
+      # `pnpm test` runs unit + integration against all three test files,
+      # so it is the single source of truth for the suite.
+      - name: Run test suite
         run: pnpm test
       - name: Verify package manifest
         run: pnpm run verify:pack
@@ -54,13 +78,13 @@ jobs:
     environment: npm-release
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 10.33.4
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
           registry-url: https://registry.npmjs.org
