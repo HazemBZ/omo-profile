@@ -8,6 +8,10 @@ const EXPECTED_MANIFEST = [
   'lib/profile-io.mjs',
   'lib/profile-validator.mjs',
   'package.json',
+  'profiles/deepseek-v4-flash-free.json',
+  'profiles/gpt56-light.json',
+  'profiles/gpt56-mixed.json',
+  'profiles/gpt56-xlight.json',
 ];
 
 const FORBIDDEN_PATH = /(^|\/)(\.omo|test|tests|fixture|fixtures|credentials?|local(?:-config)?|\.env)(\/|\.|$)/i;

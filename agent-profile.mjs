@@ -19,7 +19,7 @@ import { join } from 'path';
 import {
   configPath, profilesDir, readJson, listProfileFiles,
   idFromFilename, filenameFromId, profilePath,
-  ensureProfilesDir, atomicWrite, backupFile,
+  ensureProfilesDir, ensureBundledProfiles, atomicWrite, backupFile,
 } from './lib/profile-io.mjs';
 import { validateProfile, configMatchesProfile } from './lib/profile-validator.mjs';
 
@@ -43,8 +43,11 @@ Commands:
 Environment:
   OMO_CONFIG_PATH           Override path to oh-my-openagent.json
   OMO_PROFILES_DIR          Override profiles directory
+  OMO_BUNDLED_PROFILES_DIR  Override bundled starter profiles directory
 
 Notes:
+  - Bundled starter profiles are seeded into the profiles directory on first
+    use; existing profiles are never overwritten.
   - Switch backs up the active config before applying.
   - After a real (non-dry-run) switch, restart opencode for changes to take effect.`);
 }
@@ -58,6 +61,7 @@ async function cmdList(showJson) {
       console.log(JSON.stringify({ profiles: [] }));
     } else {
       console.log('No profiles found.');
+      console.log('Hint: run "omo-profile save <id>" to snapshot the active configuration as a profile.');
     }
     return;
   }
@@ -240,6 +244,19 @@ async function cmdSwitch(id, isDryRun) {
 // Main dispatch
 // ---------------------------------------------------------------------------
 
+/**
+ * Seed bundled starter profiles into the profiles directory (best-effort).
+ * A failure to seed is never fatal: commands still operate on whatever
+ * profiles are already present.
+ */
+async function seedBundledProfiles() {
+  try {
+    await ensureBundledProfiles(profilesDir());
+  } catch (err) {
+    console.error(`Warning: could not seed bundled profiles: ${err.message}`);
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const cmd = args[0];
@@ -247,6 +264,11 @@ async function main() {
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
     await cmdHelp();
     return;
+  }
+
+  // Profile-reading commands see bundled starter profiles once seeded.
+  if (cmd === 'list' || cmd === 'current' || cmd === 'switch') {
+    await seedBundledProfiles();
   }
 
   switch (cmd) {
