@@ -34,6 +34,7 @@
     "agent-profile.mjs",
     "lib/profile-io.mjs",
     "lib/profile-validator.mjs",
+    "profiles",
     "README.md",
     "LICENSE"
   ],
