@@ -12,7 +12,7 @@ configuration location on each supported desktop OS.
 
 ## Install
 
-Install the package from npm with pnpm after its public release:
+Install the package from npm with pnpm:
 
 ```bash
 pnpm add --global omo-profile
@@ -26,13 +26,25 @@ omo-profile help
 
 The package exposes the `omo-profile` command through its `bin` entry.
 
-The package declares pnpm as its package manager and requires Node.js 18 or
-newer. After its public release, npm can also install the package if pnpm isn't
-available:
+npm can also install the package if pnpm isn't available:
 
 ```bash
 npm install --global omo-profile
 ```
+
+### Windows notes
+
+PowerShell may refuse to run the CLI shim if script execution is restricted.
+Allow local scripts for the current user account once:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+If a freshly installed command is not found in a new terminal, the terminal
+environment is stale: Windows PowerShell and Windows Terminal cache the
+environment from process start. Fully close and reopen the terminal, or run
+`pnpm setup` once so the pnpm global bin directory is added to PATH.
 
 ### Uninstall
 
@@ -44,6 +56,14 @@ pnpm uninstall --global omo-profile
 
 Uninstalling the CLI does not remove saved profiles or the active OpenAgent
 configuration.
+
+### Bundled starter profiles
+
+The package ships starter profiles (`gpt56-mixed`, `gpt56-light`,
+`gpt56-xlight`, `deepseek-v4-flash-free`) covering common model routings. On
+the first `list`, `current`, or `switch`, they are copied into the saved
+profiles directory. Existing profiles of the same id are never overwritten, so
+seeded profiles can be edited or deleted like any other profile.
 
 ## Usage
 
@@ -83,8 +103,8 @@ These defaults intentionally follow OpenCode's documented global configuration
 location. On Windows, `~/.config/opencode` means
 `%USERPROFILE%\\.config\\opencode`.
 
-The repository currently includes profiles such as `gpt56-mixed`,
-`gpt56-light`, and `deepseek-v4-flash-free`.
+The package ships these as bundled starter profiles; see the
+[Bundled starter profiles](#bundled-starter-profiles) section.
 
 ## Environment overrides
 
@@ -117,6 +137,7 @@ Supported variables:
 
 - `OMO_CONFIG_PATH` overrides the active configuration path.
 - `OMO_PROFILES_DIR` overrides the saved profiles directory.
+- `OMO_BUNDLED_PROFILES_DIR` overrides the bundled starter profiles directory.
 
 ## Development
 
@@ -134,9 +155,9 @@ node agent-profile.mjs <command>
 
 ## Release
 
-Before any release, verify the package name and npm ownership or availability.
-Publication has not occurred automatically. A release must use a protected tag
-named `v<package-version>`, such as `v1.0.0`, after all required checks pass.
+Releases use a protected tag named `v<package-version>`, such as `v1.0.0`,
+after all required checks pass. Verify the package name and npm ownership or
+availability before tagging.
 
 ```bash
 pnpm test
