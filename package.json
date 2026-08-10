@@ -23,10 +23,10 @@
     "omo-profile": "./agent-profile.mjs"
   },
   "scripts": {
-    "test": "node --test lib/profile-validator.test.mjs lib/profile-io.test.mjs lib/agent-profile.integration.test.mjs",
-    "test:unit": "node --test lib/profile-validator.test.mjs lib/profile-io.test.mjs",
+    "test": "node --test lib/profile-validator.test.mjs lib/profile-io.test.mjs lib/config/jsonc.test.mjs lib/config/discover-config.test.mjs lib/config/config-document.test.mjs",
+    "test:unit": "node --test lib/profile-validator.test.mjs lib/profile-io.test.mjs lib/config/jsonc.test.mjs lib/config/discover-config.test.mjs lib/config/config-document.test.mjs",
     "test:int": "node --test lib/agent-profile.integration.test.mjs",
-    "test:all": "node --test lib/profile-validator.test.mjs lib/profile-io.test.mjs lib/agent-profile.integration.test.mjs",
+    "test:all": "node --test lib/profile-validator.test.mjs lib/profile-io.test.mjs lib/config/jsonc.test.mjs lib/config/discover-config.test.mjs lib/config/config-document.test.mjs lib/agent-profile.integration.test.mjs",
     "verify:pack": "node scripts/package-verify.mjs",
     "smoke:packed": "node scripts/packed-smoke.mjs"
   },
@@ -34,6 +34,7 @@
     "agent-profile.mjs",
     "lib/profile-io.mjs",
     "lib/profile-validator.mjs",
+    "lib/config",
     "profiles",
     "README.md",
     "LICENSE"

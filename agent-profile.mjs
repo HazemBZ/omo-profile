@@ -12,16 +12,44 @@
  *
  * Environment variables (for testing):
  *   OMO_CONFIG_PATH   Path to oh-my-openagent.json
+ *   OMO_CONFIG        Alias for --config (explicit config path)
  *   OMO_PROFILES_DIR  Directory of profile JSON files
  */
 
 import { join } from 'path';
 import {
-  configPath, profilesDir, readJson, listProfileFiles,
+  profilesDir, readJson, listProfileFiles,
   idFromFilename, filenameFromId, profilePath,
   ensureProfilesDir, ensureBundledProfiles, atomicWrite, backupFile,
 } from './lib/profile-io.mjs';
 import { validateProfile, configMatchesProfile } from './lib/profile-validator.mjs';
+import { loadOmoConfig } from './lib/config/write-config.mjs';
+import { ConfigNotFoundError, describeCheckedPaths } from './lib/config/discover-config.mjs';
+
+// ---------------------------------------------------------------------------
+// Config loading
+// ---------------------------------------------------------------------------
+
+/**
+ * Load the active config document, printing a user-facing error and
+ * exiting on failure.
+ *
+ * @param {string|undefined} explicitConfig — --config / OMO_CONFIG path
+ * @returns {Promise<{value: object, path: string, update: Function, save: Function}>}
+ */
+async function loadConfigOrExit(explicitConfig) {
+  try {
+    return await loadOmoConfig({ explicitPath: explicitConfig });
+  } catch (err) {
+    if (err instanceof ConfigNotFoundError) {
+      console.error(`Error: ${err.message}`);
+      console.error(describeCheckedPaths(err.checked));
+    } else {
+      console.error(`Error: Cannot read config: ${err.message}`);
+    }
+    process.exit(1);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Commands
@@ -33,6 +61,9 @@ async function cmdHelp() {
 Profile Manager for Oh My OpenAgent — save, list, identify, and switch
 agent model profiles.
 
+Global options:
+  --config <path>           Use this config file instead of auto-discovery (JSON or JSONC)
+
 Commands:
   list [--json]             List saved profiles
   current                   Show active profile (name or "custom")
@@ -42,6 +73,7 @@ Commands:
 
 Environment:
   OMO_CONFIG_PATH           Override path to oh-my-openagent.json
+  OMO_CONFIG                Alias for --config
   OMO_PROFILES_DIR          Override profiles directory
   OMO_BUNDLED_PROFILES_DIR  Override bundled starter profiles directory
 
@@ -97,14 +129,9 @@ async function cmdList(showJson) {
   }
 }
 
-async function cmdCurrent() {
-  let config;
-  try {
-    config = await readJson(configPath());
-  } catch (err) {
-    console.error(`Error: Cannot read config at ${configPath()}: ${err.message}`);
-    process.exit(1);
-  }
+async function cmdCurrent(explicitConfig) {
+  const doc = await loadConfigOrExit(explicitConfig);
+  const config = doc.value;
 
   const dir = profilesDir();
   const files = listProfileFiles(dir);
@@ -130,19 +157,14 @@ async function cmdCurrent() {
   console.log('custom');
 }
 
-async function cmdSave(id) {
+async function cmdSave(id, explicitConfig) {
   if (!id || typeof id !== 'string' || !/^[\w.-]+$/.test(id)) {
     console.error('Error: <id> must be a non-empty alphanumeric identifier (letters, digits, underscore, hyphen, dot).');
     process.exit(1);
   }
 
-  let config;
-  try {
-    config = await readJson(configPath());
-  } catch (err) {
-    console.error(`Error: Cannot read config at ${configPath()}: ${err.message}`);
-    process.exit(1);
-  }
+  const doc = await loadConfigOrExit(explicitConfig);
+  const config = doc.value;
 
   const profile = {
     metadata: {
@@ -168,7 +190,7 @@ async function cmdSave(id) {
   console.log(`Profile "${id}" saved to ${outPath}`);
 }
 
-async function cmdSwitch(id, isDryRun) {
+async function cmdSwitch(id, isDryRun, explicitConfig) {
   if (!id || typeof id !== 'string' || !/^[\w.-]+$/.test(id)) {
     console.error('Error: <id> must be a non-empty alphanumeric identifier (letters, digits, underscore, hyphen, dot).');
     process.exit(1);
@@ -193,11 +215,14 @@ async function cmdSwitch(id, isDryRun) {
     process.exit(1);
   }
 
+  // Load active config
+  const doc = await loadConfigOrExit(explicitConfig);
+
   if (isDryRun) {
     /* eslint-disable-next-line no-console */
     console.log(`[dry-run] Would apply profile "${id}":`);
-    console.log(`  Config:   ${configPath()}`);
-    console.log(`  Backup:   ${configPath()}.bak-<timestamp>`);
+    console.log(`  Config:   ${doc.path}`);
+    console.log(`  Backup:   ${doc.path}.bak-<timestamp>`);
     console.log('  Changes:  agents + categories (all other keys preserved)');
     console.log('');
     console.log('  Agent assignments:');
@@ -212,30 +237,25 @@ async function cmdSwitch(id, isDryRun) {
     return;
   }
 
-  // Read active config
-  let activeConfig;
-  try {
-    activeConfig = await readJson(configPath());
-  } catch (err) {
-    console.error(`Error: Cannot read config at ${configPath()}: ${err.message}`);
-    process.exit(1);
-  }
-
   // Backup
   try {
-    const backupPath = await backupFile(configPath());
+    const backupPath = await backupFile(doc.path);
     console.log(`Backup saved to ${backupPath}`);
   } catch (err) {
     console.error(`Error: Could not create backup: ${err.message}`);
     process.exit(1);
   }
 
-  // Atomic update: replace only agents + categories, keep everything else
-  activeConfig.agents = JSON.parse(JSON.stringify(profile.agents));
-  activeConfig.categories = JSON.parse(JSON.stringify(profile.categories));
-
-  await atomicWrite(configPath(), JSON.stringify(activeConfig, null, 2) + '\n');
-  console.log(`Profile "${id}" applied to ${configPath()}`);
+  // Atomic update via the document layer: replace only agents + categories,
+  // keep everything else (comments/formatting preserved by the writer).
+  const next = {
+    ...doc.value,
+    agents: structuredClone(profile.agents),
+    categories: structuredClone(profile.categories),
+  };
+  doc.update(next);
+  await doc.save();
+  console.log(`Profile "${id}" applied to ${doc.path}`);
   console.log('');
   console.log('IMPORTANT: Restart opencode for changes to take effect.');
 }
@@ -257,9 +277,43 @@ async function seedBundledProfiles() {
   }
 }
 
+/**
+ * Extract and remove every `--config` occurrence from argv.
+ *
+ * Accepts both `--config <path>` and `--config=<path>` anywhere in argv
+ * (before or after the subcommand). Repeated flags: last one wins.
+ *
+ * @param {string[]} args
+ * @returns {{ rest: string[], cliConfigPath: string|undefined }}
+ */
+function extractConfigFlag(args) {
+  const rest = [];
+  let cliConfigPath;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--config') {
+      const value = args[i + 1];
+      if (value === undefined) {
+        console.error('Error: --config requires a path');
+        process.exit(1);
+      }
+      cliConfigPath = value; // last one wins
+      i += 1; // consume the value
+    } else if (arg.startsWith('--config=')) {
+      cliConfigPath = arg.slice('--config='.length);
+    } else {
+      rest.push(arg);
+    }
+  }
+  return { rest, cliConfigPath };
+}
+
 async function main() {
-  const args = process.argv.slice(2);
-  const cmd = args[0];
+  const { rest, cliConfigPath } = extractConfigFlag(process.argv.slice(2));
+  // --config beats OMO_CONFIG; both beat auto-discovery. OMO_CONFIG_PATH is
+  // read by the discovery layer itself.
+  const explicitConfig = cliConfigPath || process.env.OMO_CONFIG || undefined;
+  const cmd = rest[0];
 
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
     await cmdHelp();
@@ -273,19 +327,19 @@ async function main() {
 
   switch (cmd) {
     case 'list': {
-      await cmdList(args.includes('--json'));
+      await cmdList(rest.includes('--json'));
       break;
     }
     case 'current': {
-      await cmdCurrent();
+      await cmdCurrent(explicitConfig);
       break;
     }
     case 'save': {
-      await cmdSave(args[1]);
+      await cmdSave(rest[1], explicitConfig);
       break;
     }
     case 'switch': {
-      await cmdSwitch(args[1], args.includes('--dry-run'));
+      await cmdSwitch(rest[1], rest.includes('--dry-run'), explicitConfig);
       break;
     }
     default: {
