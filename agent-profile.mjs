@@ -202,12 +202,12 @@ async function cmdSwitch(id, isDryRun) {
     console.log('');
     console.log('  Agent assignments:');
     for (const [name, entry] of Object.entries(profile.agents).sort()) {
-      console.log(`    ${name.padEnd(20)} ${entry.model}${entry.variant && entry.variant !== 'default' ? ` (${entry.variant})` : ''}`);
+      console.log(`    ${name.padEnd(20)} ${entry.model ?? '(inherit)'}${entry.variant && entry.variant !== 'default' ? ` (${entry.variant})` : ''}`);
     }
     console.log('');
     console.log('  Category assignments:');
     for (const [name, entry] of Object.entries(profile.categories).sort()) {
-      console.log(`    ${name.padEnd(20)} ${entry.model}${entry.variant && entry.variant !== 'default' ? ` (${entry.variant})` : ''}`);
+      console.log(`    ${name.padEnd(20)} ${entry.model ?? '(inherit)'}${entry.variant && entry.variant !== 'default' ? ` (${entry.variant})` : ''}`);
     }
     return;
   }
