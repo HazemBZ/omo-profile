@@ -1,11 +1,19 @@
 # omo-profile
 
 `omo-profile` manages saved agent-model profiles for Oh My OpenAgent.
-It snapshots the `agents` and `categories` sections of
-`oh-my-openagent.json`, identifies the active profile, and applies saved
-profiles safely.
+It snapshots the `agents` and `categories` sections of the Oh My OpenAgent
+configuration, identifies the active profile, and applies saved profiles
+safely.
 
 Requires Node.js 18 or newer.
+
+### JSONC support
+
+The active configuration is [JSONC](https://github.com/microsoft/node-jsonc-parser)
+— JSON with `//` and `/* */` comments and trailing commas. `omo-profile`
+parses JSONC and preserves comments, indentation, and newline style when it
+writes; switching a profile changes only the `agents` and `categories`
+sections and leaves everything else byte-for-byte intact.
 
 Supports Windows, macOS, and Linux. The CLI uses the same OpenCode-compatible
 configuration location on each supported desktop OS.
@@ -83,6 +91,10 @@ omo-profile switch <profile-id> --dry-run
 
 # Apply a profile
 omo-profile switch <profile-id>
+
+# Point the CLI at a specific configuration file
+omo-profile --config ./custom.jsonc switch <profile-id>
+omo-profile --config=./custom.jsonc current
 ```
 
 Applying a profile creates a timestamped backup of the active configuration,
@@ -93,15 +105,25 @@ Profile IDs may contain letters, numbers, underscores, hyphens, and dots.
 
 ## File locations
 
-| Purpose | Default path |
+The active configuration is discovered in this order of preference:
+
+| Priority | Filename |
 | --- | --- |
-| Active configuration | `~/.config/opencode/oh-my-openagent.json` |
+| 1 | `oh-my-openagent.jsonc` |
+| 2 | `oh-my-openagent.json` |
+| 3 | `oh-my-opencode.jsonc` |
+| 4 | `oh-my-opencode.json` |
+
+| Purpose | Default location |
+| --- | --- |
+| Active configuration | `~/.config/opencode/oh-my-openagent.jsonc` |
 | Saved profiles | `~/.config/opencode/omo-profiles/` |
 | Profile format | `<profile-id>.json` |
 
-These defaults intentionally follow OpenCode's documented global configuration
-location. On Windows, `~/.config/opencode` means
-`%USERPROFILE%\\.config\\opencode`.
+The first existing file wins. If none exist, the CLI reports the checked
+locations and exits. On Windows the primary configuration directory is
+`%APPDATA%\opencode` with `~/.config/opencode` tried as a fallback; on macOS
+and Linux it is `~/.config/opencode`.
 
 The package ships these as bundled starter profiles; see the
 [Bundled starter profiles](#bundled-starter-profiles) section.
@@ -116,6 +138,10 @@ default locations.
 OMO_CONFIG_PATH=/path/to/oh-my-openagent.json \
 OMO_PROFILES_DIR=/path/to/profiles \
 omo-profile list
+```
+
+```bash
+omo-profile --config ./custom.jsonc current
 ```
 
 PowerShell examples preserve paths containing spaces by assigning each literal
@@ -135,9 +161,24 @@ Remove-Item Env:OMO_CONFIG_PATH, Env:OMO_PROFILES_DIR -ErrorAction SilentlyConti
 
 Supported variables:
 
-- `OMO_CONFIG_PATH` overrides the active configuration path.
+- `OMO_CONFIG_PATH` overrides the active configuration path (discovery-level
+  override; equivalent to `--config`).
+- `OMO_CONFIG` alias for `--config`; takes precedence over `OMO_CONFIG_PATH`
+  and auto-discovery, but `--config` wins over both.
+- `OMO_CONFIG_DIR` overrides the directory scanned for the configuration
+  filenames above.
 - `OMO_PROFILES_DIR` overrides the saved profiles directory.
 - `OMO_BUNDLED_PROFILES_DIR` overrides the bundled starter profiles directory.
+
+Precedence for the active configuration:
+
+1. `--config <path>` flag
+2. `OMO_CONFIG` environment variable
+3. `OMO_CONFIG_PATH` environment variable
+4. Auto-discovery of the filenames above in the config directory
+
+The `--config` flag accepts either `--config <path>` or `--config=<path>` and
+may appear anywhere on the command line, making it useful for CI:
 
 ## Development
 
