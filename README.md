@@ -2,8 +2,8 @@
 
 `omo-profile` manages saved agent-model profiles for Oh My OpenAgent.
 It snapshots the `agents` and `categories` sections of the Oh My OpenAgent
-configuration, identifies the active profile, and applies saved profiles
-safely.
+configuration, identifies matching saved profiles, previews canonical changes,
+and applies saved profiles safely.
 
 Requires Node.js 18 or newer.
 
@@ -69,7 +69,7 @@ configuration.
 
 The package ships starter profiles (`gpt56-mixed`, `gpt56-light`,
 `gpt56-xlight`, `deepseek-v4-flash-free`) covering common model routings. On
-the first `list`, `current`, or `switch`, they are copied into the saved
+the first `list`, `current`, `diff`, or non-dry-run `switch`, they are copied into the saved
 profiles directory. Existing profiles of the same id are never overwritten, so
 seeded profiles can be edited or deleted like any other profile.
 
@@ -80,8 +80,12 @@ seeded profiles can be edited or deleted like any other profile.
 omo-profile list
 omo-profile list --json
 
-# Show the profile matching the active configuration
+# Show every saved profile matching the active configuration
 omo-profile current
+
+# Show canonical changes needed to switch profiles
+omo-profile diff <profile-id>
+omo-profile diff <profile-id> --json
 
 # Save the current configuration as a profile
 omo-profile save <profile-id>
@@ -100,6 +104,12 @@ omo-profile --config=./custom.jsonc current
 Applying a profile creates a timestamped backup of the active configuration,
 replaces only `agents` and `categories`, and preserves other top-level keys.
 Restart OpenCode after switching for changes to take effect.
+
+`current` uses sparse matching: only agent and category entries declared by a
+saved profile are compared, but every declared entry must match exactly,
+including unknown fields. `diff` and `switch --dry-run` use the same canonical
+comparison: object key order is ignored, array order remains significant, and
+dry-run never modifies the configuration or profile directory.
 
 Profile IDs may contain letters, numbers, underscores, hyphens, and dots.
 

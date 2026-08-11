@@ -72,7 +72,8 @@ try {
   const dryRun = runInstalledBinary(bin, ['switch', 'gpt56-mixed', '--dry-run'], { env });
   assert.equal(dryRun.exitCode, 0, `installed switch --dry-run failed:\n${dryRun.stderr}`);
   assert.match(dryRun.stdout, /\[dry-run\]/, 'dry-run marker in output');
-  assert.match(dryRun.stdout, /Agent assignments/, 'agent assignments in dry-run output');
+  assert.match(dryRun.stdout, /Profile "gpt56-mixed": \d+ changes:/, 'canonical diff in dry-run output');
+  assert.match(dryRun.stdout, /No files were modified\./, 'dry-run must not write files');
 
   const invalid = runInstalledBinary(bin, ['invalid-command'], { env });
   assert.notEqual(invalid.exitCode, 0, 'installed invalid command must fail');

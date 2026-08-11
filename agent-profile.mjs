@@ -5,7 +5,8 @@
  *
  * Commands:
  *   list [--json]          List saved profiles
- *   current                Show which profile (or "custom") matches the active config
+ *   current                Show saved profiles matching the active config
+ *   diff <id> [--json]     Show changes a profile switch would make
  *   save <id>              Snapshot active config as a named profile
  *   switch <id> [--dry-run] Apply a saved profile
  *   help                   Show this message
@@ -20,11 +21,14 @@ import { join } from 'path';
 import {
   profilesDir, readJson, listProfileFiles,
   idFromFilename, filenameFromId, profilePath,
-  ensureProfilesDir, ensureBundledProfiles, atomicWrite, backupFile,
+  ensureProfilesDir, ensureBundledProfiles, bundledProfilesDir, atomicWrite, backupFile,
 } from './lib/profile-io.mjs';
-import { validateProfile, configMatchesProfile } from './lib/profile-validator.mjs';
+import { validateProfile } from './lib/profile-validator.mjs';
 import { loadOmoConfig } from './lib/config/write-config.mjs';
 import { ConfigNotFoundError, describeCheckedPaths } from './lib/config/discover-config.mjs';
+import { matchesProfile } from './lib/profile/compare.mjs';
+import { diffProfiles } from './lib/profile/diff.mjs';
+import { renderDiff, renderDryRun } from './lib/cli/render-diff.mjs';
 
 // ---------------------------------------------------------------------------
 // Config loading
@@ -66,7 +70,8 @@ Global options:
 
 Commands:
   list [--json]             List saved profiles
-  current                   Show active profile (name or "custom")
+  current                   Show saved profile matches for active config
+  diff <id> [--json]        Show changes a profile switch would make
   save <id>                 Snapshot current config as profile <id>
   switch <id> [--dry-run]   Apply profile <id> to active config
   help                      Show this help message
@@ -136,25 +141,73 @@ async function cmdCurrent(explicitConfig) {
   const dir = profilesDir();
   const files = listProfileFiles(dir);
 
-  if (files.length === 0) {
-    console.log('custom');
-    return;
-  }
-
+  const matches = [];
   for (const f of files) {
     const id = idFromFilename(f);
     try {
       const profile = await readJson(join(dir, f));
-      if (configMatchesProfile(config, profile)) {
-        console.log(id);
-        return;
-      }
+      if (matchesProfile(config, profile)) matches.push(id);
     } catch (_skip) {
       /* unparseable profile — skip */
     }
   }
 
-  console.log('custom');
+  if (matches.length === 1) {
+    console.log(`Current profile: ${matches[0]}`);
+    return;
+  }
+  if (matches.length === 0) {
+    console.log('Current configuration does not match a saved profile.');
+    return;
+  }
+  console.log(`Current configuration matches ${matches.length} profiles:`);
+  for (const id of matches) console.log(`  ${id}`);
+}
+
+function profileSwitchSections(profile) {
+  return {
+    agents: profile.agents ?? {},
+    categories: profile.categories ?? {},
+  };
+}
+
+function switchDiff(id, config, profile) {
+  const currentSections = {};
+  for (const section of ['agents', 'categories']) {
+    if (Object.hasOwn(config, section)) currentSections[section] = config[section];
+  }
+  const changes = diffProfiles(
+    currentSections,
+    profileSwitchSections(profile),
+  );
+  return { profile: id, changed: changes.length > 0, changes };
+}
+
+async function cmdDiff(id, showJson, explicitConfig) {
+  if (!id || typeof id !== 'string' || !/^[\w.-]+$/.test(id)) {
+    console.error('Error: <id> must be a non-empty alphanumeric identifier (letters, digits, underscore, hyphen, dot).');
+    process.exit(1);
+  }
+
+  const pPath = profilePath(profilesDir(), id);
+  let profile;
+  try {
+    profile = await readJson(pPath);
+  } catch (_readErr) {
+    console.error(`Error: Profile "${id}" not found at ${pPath}`);
+    process.exit(1);
+  }
+
+  const valid = validateProfile(profile);
+  if (!valid.valid) {
+    console.error(`Error: Profile "${id}" is invalid:`);
+    for (const error of valid.errors) console.error(`  - ${error}`);
+    process.exit(1);
+  }
+
+  const doc = await loadConfigOrExit(explicitConfig);
+  const diff = switchDiff(id, doc.value, profile);
+  console.log(showJson ? JSON.stringify(diff, null, 2) : renderDiff(diff));
 }
 
 async function cmdSave(id, explicitConfig) {
@@ -203,8 +256,17 @@ async function cmdSwitch(id, isDryRun, explicitConfig) {
   try {
     profile = await readJson(pPath);
   } catch (_readErr) {
-    console.error(`Error: Profile "${id}" not found at ${pPath}`);
-    process.exit(1);
+    if (isDryRun) {
+      try {
+        profile = await readJson(profilePath(bundledProfilesDir(), id));
+      } catch (_bundledReadErr) {
+        console.error(`Error: Profile "${id}" not found at ${pPath}`);
+        process.exit(1);
+      }
+    } else {
+      console.error(`Error: Profile "${id}" not found at ${pPath}`);
+      process.exit(1);
+    }
   }
 
   // Validate profile
@@ -217,23 +279,10 @@ async function cmdSwitch(id, isDryRun, explicitConfig) {
 
   // Load active config
   const doc = await loadConfigOrExit(explicitConfig);
+  const nextSections = profileSwitchSections(profile);
 
   if (isDryRun) {
-    /* eslint-disable-next-line no-console */
-    console.log(`[dry-run] Would apply profile "${id}":`);
-    console.log(`  Config:   ${doc.path}`);
-    console.log(`  Backup:   ${doc.path}.bak-<timestamp>`);
-    console.log('  Changes:  agents + categories (all other keys preserved)');
-    console.log('');
-    console.log('  Agent assignments:');
-    for (const [name, entry] of Object.entries(profile.agents).sort()) {
-      console.log(`    ${name.padEnd(20)} ${entry.model ?? '(inherit)'}${entry.variant && entry.variant !== 'default' ? ` (${entry.variant})` : ''}`);
-    }
-    console.log('');
-    console.log('  Category assignments:');
-    for (const [name, entry] of Object.entries(profile.categories).sort()) {
-      console.log(`    ${name.padEnd(20)} ${entry.model ?? '(inherit)'}${entry.variant && entry.variant !== 'default' ? ` (${entry.variant})` : ''}`);
-    }
+    console.log(renderDryRun(switchDiff(id, doc.value, profile)));
     return;
   }
 
@@ -250,8 +299,8 @@ async function cmdSwitch(id, isDryRun, explicitConfig) {
   // keep everything else (comments/formatting preserved by the writer).
   const next = {
     ...doc.value,
-    agents: structuredClone(profile.agents),
-    categories: structuredClone(profile.categories),
+    agents: structuredClone(nextSections.agents),
+    categories: structuredClone(nextSections.categories),
   };
   doc.update(next);
   await doc.save();
@@ -321,7 +370,7 @@ async function main() {
   }
 
   // Profile-reading commands see bundled starter profiles once seeded.
-  if (cmd === 'list' || cmd === 'current' || cmd === 'switch') {
+  if (cmd === 'list' || cmd === 'current' || cmd === 'diff' || (cmd === 'switch' && !rest.includes('--dry-run'))) {
     await seedBundledProfiles();
   }
 
@@ -332,6 +381,10 @@ async function main() {
     }
     case 'current': {
       await cmdCurrent(explicitConfig);
+      break;
+    }
+    case 'diff': {
+      await cmdDiff(rest[1], rest.includes('--json'), explicitConfig);
       break;
     }
     case 'save': {
