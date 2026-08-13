@@ -75,6 +75,24 @@ try {
   assert.match(dryRun.stdout, /Profile "gpt56-mixed": \d+ changes:/, 'canonical diff in dry-run output');
   assert.match(dryRun.stdout, /No files were modified\./, 'dry-run must not write files');
 
+  const save = runInstalledBinary(bin, ['save', 'smoke-journey', '--json'], { env });
+  assert.equal(save.exitCode, 0, `installed save failed:\n${save.stderr}`);
+  assert.deepEqual(JSON.parse(save.stdout), { ok: true, profileId: 'smoke-journey' });
+
+  const clone = runInstalledBinary(bin, ['clone', 'smoke-journey', 'smoke-copy', '--json'], { env });
+  assert.equal(clone.exitCode, 0, `installed clone failed:\n${clone.stderr}`);
+  assert.deepEqual(JSON.parse(clone.stdout), { ok: true, sourceId: 'smoke-journey', profileId: 'smoke-copy' });
+
+  const rename = runInstalledBinary(bin, ['rename', 'smoke-copy', 'smoke-final', '--json'], { env });
+  assert.equal(rename.exitCode, 0, `installed rename failed:\n${rename.stderr}`);
+  assert.deepEqual(JSON.parse(rename.stdout), { ok: true, oldId: 'smoke-copy', profileId: 'smoke-final' });
+
+  const remove = runInstalledBinary(bin, ['delete', 'smoke-final', '--yes', '--json'], { env });
+  assert.equal(remove.exitCode, 0, `installed delete failed:\n${remove.stderr}`);
+  assert.deepEqual(JSON.parse(remove.stdout), { ok: true, profileId: 'smoke-final' });
+  assert.ok(existsSync(join(profilesDir, 'smoke-journey.json')), 'surviving profile must remain after delete');
+  assert.equal(existsSync(join(profilesDir, 'smoke-final.json')), false, 'deleted profile must be gone');
+
   const invalid = runInstalledBinary(bin, ['invalid-command'], { env });
   assert.notEqual(invalid.exitCode, 0, 'installed invalid command must fail');
   assert.match(invalid.stderr, /Unknown command/);
@@ -83,6 +101,7 @@ try {
   console.log(`help: exit ${help.exitCode}\n${help.stdout.trim()}`);
   console.log(`list --json: exit ${list.exitCode}\n${list.stdout.trim()}`);
   console.log(`switch --dry-run: exit ${dryRun.exitCode}\n${dryRun.stdout.trim()}`);
+  console.log(`save → clone → rename → delete: ${[save, clone, rename, remove].map(r => r.exitCode).join(' → ')}`);
   console.log(`invalid command: exit ${invalid.exitCode}\n${invalid.stderr.trim()}`);
 } finally {
   rmSync(root, { recursive: true, force: true });
