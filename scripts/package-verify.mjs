@@ -25,6 +25,7 @@ const EXPECTED_MANIFEST = [
   'lib/profile/normalize.mjs',
   'lib/profile/profile-store.mjs',
   'package.json',
+  'profiles/deep-pro-v4.json',
   'profiles/deepseek-v4-flash-free.json',
   'profiles/gpt56-light.json',
   'profiles/gpt56-mixed.json',

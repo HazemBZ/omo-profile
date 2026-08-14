@@ -68,7 +68,7 @@ configuration.
 ### Bundled starter profiles
 
 The package ships starter profiles (`gpt56-mixed`, `gpt56-light`,
-`gpt56-xlight`, `deepseek-v4-flash-free`) covering common
+`gpt56-xlight`, `deepseek-v4-flash-free`, `deep-pro-v4`) covering common
 model routings. On
 the first `list`, `current`, `diff`, or non-dry-run `switch`, they are copied into the saved
 profiles directory. Existing profiles of the same id are never overwritten, so

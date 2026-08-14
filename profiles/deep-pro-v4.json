@@ -1,0 +1,106 @@
+{
+  "metadata": {
+    "name": "deep-pro-v4",
+    "description": "All agents and categories use opencode-go/deepseek-v4-pro (opencode go subscription)",
+    "created": "2026-08-13T00:00:00.000Z"
+  },
+  "agents": {
+    "hephaestus": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "oracle": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "librarian": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "explore": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "multimodal-looker": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "prometheus": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "metis": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "momus": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "atlas": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "sisyphus-junior": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "sisyphus": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    }
+  },
+  "categories": {
+    "visual-engineering": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "ultrabrain": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "deep": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "artistry": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "quick": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "unspecified-low": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "unspecified-high": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    },
+    "writing": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "default",
+      "fallback_models": []
+    }
+  }
+}
