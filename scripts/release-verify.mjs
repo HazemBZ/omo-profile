@@ -44,13 +44,28 @@ function npmView(args, registry) {
   }
 }
 
+function npmViewSoft(args, registry) {
+  try {
+    return npmView(args, registry);
+  } catch {
+    return null;
+  }
+}
+
 function readPackage() {
   return JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 }
 
 function registryPreflight(packageName, packageVersion, registry) {
   const publishedName = npmView(['view', packageName, 'name'], registry);
-  const packageNameStatus = publishedName === null ? 'available' : 'occupied';
+  let packageNameStatus = publishedName === null ? 'available' : 'occupied';
+  if (packageNameStatus === 'occupied') {
+    const me = npmViewSoft(['whoami'], registry);
+    const owners = npmView(['owner', 'ls', packageName], registry);
+    if (me && owners?.split('\n').some((line) => line.trim().split(/\s+/)[0] === me)) {
+      packageNameStatus = 'owned';
+    }
+  }
   const publishedVersion = npmView(['view', `${packageName}@${packageVersion}`, 'version'], registry);
   return { packageNameStatus, duplicateVersion: publishedVersion !== null };
 }
