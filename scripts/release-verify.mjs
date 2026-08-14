@@ -64,6 +64,8 @@ function registryPreflight(packageName, packageVersion, registry) {
     const owners = npmView(['owner', 'ls', packageName], registry);
     if (me && owners?.split('\n').some((line) => line.trim().split(/\s+/)[0] === me)) {
       packageNameStatus = 'owned';
+    } else {
+      console.error(`ownership preflight: whoami=${me ?? 'unauthenticated'} owners=${JSON.stringify(owners ?? null)}`);
     }
   }
   const publishedVersion = npmView(['view', `${packageName}@${packageVersion}`, 'version'], registry);
