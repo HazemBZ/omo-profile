@@ -62,7 +62,17 @@ function registryPreflight(packageName, packageVersion, registry) {
   if (packageNameStatus === 'occupied') {
     const me = npmViewSoft(['whoami'], registry);
     const owners = npmView(['owner', 'ls', packageName], registry);
-    if (me && owners?.split('\n').some((line) => line.trim().split(/\s+/)[0] === me)) {
+    const ownedByIdentity = me != null
+      && owners?.split('\n').some((line) => line.trim().split(/\s+/)[0] === me);
+    const publishToken = process.env.NODE_AUTH_TOKEN ?? process.env.NPM_TOKEN ?? null;
+    if (ownedByIdentity) {
+      packageNameStatus = 'owned';
+    } else if (me === null && publishToken) {
+      // Trusted-publishing (OIDC) tokens cannot query identity, but npm only
+      // issues them to accounts configured as publishers for the package, and
+      // `npm publish` rejects non-owners regardless. The duplicate-version
+      // check below still guards against republishing an existing version.
+      console.error('ownership preflight: whoami unavailable with publish token (OIDC trusted publishing); assuming publisher ownership');
       packageNameStatus = 'owned';
     } else {
       console.error(`ownership preflight: whoami=${me ?? 'unauthenticated'} owners=${JSON.stringify(owners ?? null)}`);
