@@ -5,6 +5,12 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 const BUNDLED_IDS = ['deepseek-free', 'deepseek-pro', 'gpt-luna', 'gpt-mix', 'gpt-terra'];
+const DOCTOR_FIXTURE = {
+  agents: {
+    oracle: { model: 'opencode/smoke-model' },
+  },
+  categories: {},
+};
 
 function run(command, args, options = {}) {
   try {
@@ -38,8 +44,8 @@ mkdirSync(packDir, { recursive: true });
 mkdirSync(prefix, { recursive: true });
 mkdirSync(profilesDir, { recursive: true });
 mkdirSync(join(root, 'config space'), { recursive: true });
-writeFileSync(configPath, '{}\n');
-writeFileSync(join(profilesDir, 'packed.json'), JSON.stringify({ metadata: { name: 'packed' } }) + '\n');
+writeFileSync(configPath, `${JSON.stringify(DOCTOR_FIXTURE, null, 2)}\n`);
+writeFileSync(join(profilesDir, 'packed.json'), `${JSON.stringify(DOCTOR_FIXTURE, null, 2)}\n`);
 
 try {
   const pack = runPnpm(['pack', '--pack-destination', packDir], { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -58,6 +64,17 @@ try {
   const help = runInstalledBinary(bin, ['help'], { env });
   assert.equal(help.exitCode, 0, `installed help failed:\n${help.stderr}`);
   assert.match(help.stdout, /Usage:/, 'installed generated binary must print Usage:');
+
+  const doctor = runInstalledBinary(bin, ['doctor', '--json', '--offline'], { env });
+  assert.equal(doctor.exitCode, 0, `installed doctor failed:\n${doctor.stderr}`);
+  const doctorReport = JSON.parse(doctor.stdout);
+  assert.equal(doctorReport.healthy, true, 'offline doctor fixture must be healthy');
+  assert.equal(doctorReport.summary.fail, 0, 'offline doctor fixture must have no failures');
+  assert.ok(
+    doctorReport.checks.some(check => check.id === 'models.availability' && check.status === 'skip'),
+    'offline doctor must skip model availability',
+  );
+  assert.deepEqual(readdirSync(profilesDir), ['packed.json'], 'doctor must not seed or mutate profiles');
 
   const list = runInstalledBinary(bin, ['list', '--json'], { env });
   assert.equal(list.exitCode, 0, `installed list failed:\n${list.stderr}`);
@@ -99,6 +116,7 @@ try {
 
   console.log(`Installed generated binary: ${bin}`);
   console.log(`help: exit ${help.exitCode}\n${help.stdout.trim()}`);
+  console.log(`doctor --json --offline: exit ${doctor.exitCode}\n${doctor.stdout.trim()}`);
   console.log(`list --json: exit ${list.exitCode}\n${list.stdout.trim()}`);
   console.log(`switch --dry-run: exit ${dryRun.exitCode}\n${dryRun.stdout.trim()}`);
   console.log(`save → clone → rename → delete: ${[save, clone, rename, remove].map(r => r.exitCode).join(' → ')}`);
