@@ -67,8 +67,8 @@ configuration.
 
 ### Bundled starter profiles
 
-The package ships starter profiles (`gpt56-mixed`, `gpt56-light`,
-`gpt56-xlight`, `deepseek-v4-flash-free`, `deep-pro-v4`) covering common
+The package ships starter profiles (`gpt-mix`, `gpt-terra`,
+`gpt-luna`, `deepseek-free`, `deepseek-pro`) covering common
 model routings. On
 the first `list`, `current`, `diff`, or non-dry-run `switch`, they are copied into the saved
 profiles directory. Existing profiles of the same id are never overwritten, so
@@ -92,7 +92,7 @@ omo-profile diff <profile-id> --json
 omo-profile save <profile-id>
 
 # Preview a profile switch
-omo-profile switch <profile-id> --dry-run
+omo-profile switch gpt-mix --dry-run
 
 # Apply a profile
 omo-profile switch <profile-id>
@@ -295,7 +295,7 @@ node agent-profile.mjs <command>
 
 ## Release
 
-Releases use a protected tag named `v<package-version>`, such as `v1.0.0`,
+Releases use a protected tag named `v<package-version>`, such as `v2.0.0`,
 after all required checks pass. Verify the package name and npm ownership or
 availability before tagging.
 
@@ -303,8 +303,8 @@ availability before tagging.
 pnpm test
 pnpm run verify:pack
 pnpm run smoke:packed
-git tag v1.0.0
-git push origin v1.0.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 Repository administrators must protect `v*` tags before using this release
