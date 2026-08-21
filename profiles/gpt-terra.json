@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "name": "gpt56-light",
+    "name": "gpt-terra",
     "description": "Light GPT-5.6 routing: Terra for reasoning/execution, Luna for search/vision/creative\nroles. No non-GPT fallbacks.",
     "created": "2026-08-02T00:00:00.000Z"
   },
