@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync, existsSync 
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-const BUNDLED_IDS = ['deepseek-v4-flash-free', 'gpt56-light', 'gpt56-mixed', 'gpt56-xlight'];
+const BUNDLED_IDS = ['deepseek-free', 'deepseek-pro', 'gpt-luna', 'gpt-mix', 'gpt-terra'];
 
 function run(command, args, options = {}) {
   try {
@@ -69,10 +69,10 @@ try {
     assert.ok(existsSync(join(profilesDir, `${id}.json`)), `bundled profile "${id}" must be seeded to disk`);
   }
 
-  const dryRun = runInstalledBinary(bin, ['switch', 'gpt56-mixed', '--dry-run'], { env });
+  const dryRun = runInstalledBinary(bin, ['switch', 'gpt-mix', '--dry-run'], { env });
   assert.equal(dryRun.exitCode, 0, `installed switch --dry-run failed:\n${dryRun.stderr}`);
   assert.match(dryRun.stdout, /\[dry-run\]/, 'dry-run marker in output');
-  assert.match(dryRun.stdout, /Profile "gpt56-mixed": \d+ changes:/, 'canonical diff in dry-run output');
+  assert.match(dryRun.stdout, /Profile "gpt-mix": \d+ changes:/, 'canonical diff in dry-run output');
   assert.match(dryRun.stdout, /No files were modified\./, 'dry-run must not write files');
 
   const save = runInstalledBinary(bin, ['save', 'smoke-journey', '--json'], { env });

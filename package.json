@@ -1,6 +1,6 @@
 {
   "name": "omo-profile",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "description": "Profile manager for Oh My OpenAgent agent model configurations",
   "license": "MIT",
   "repository": {
@@ -51,11 +51,11 @@
     "lib/cli/read-commands.mjs",
     "lib/cli/render-diff.mjs",
     "lib/cli/runtime.mjs",
-    "profiles/deep-pro-v4.json",
-    "profiles/deepseek-v4-flash-free.json",
-    "profiles/gpt56-light.json",
-    "profiles/gpt56-mixed.json",
-    "profiles/gpt56-xlight.json",
+    "profiles/deepseek-free.json",
+    "profiles/deepseek-pro.json",
+    "profiles/gpt-luna.json",
+    "profiles/gpt-mix.json",
+    "profiles/gpt-terra.json",
     "README.md",
     "LICENSE"
   ],

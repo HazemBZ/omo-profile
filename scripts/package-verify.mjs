@@ -25,11 +25,11 @@ const EXPECTED_MANIFEST = [
   'lib/profile/normalize.mjs',
   'lib/profile/profile-store.mjs',
   'package.json',
-  'profiles/deep-pro-v4.json',
-  'profiles/deepseek-v4-flash-free.json',
-  'profiles/gpt56-light.json',
-  'profiles/gpt56-mixed.json',
-  'profiles/gpt56-xlight.json',
+  'profiles/deepseek-free.json',
+  'profiles/deepseek-pro.json',
+  'profiles/gpt-luna.json',
+  'profiles/gpt-mix.json',
+  'profiles/gpt-terra.json',
 ];
 
 const FORBIDDEN_PATH = /(^|\/)(\.omo|test|tests|fixture|fixtures|credentials?|local(?:-config)?|\.env)(\/|\.|$)/i;
