@@ -58,10 +58,8 @@ jobs:
           max_attempts: 3
           retry_on: error
           command: pnpm install --frozen-lockfile
-      # `pnpm test` runs unit + integration against all three test files,
-      # so it is the single source of truth for the suite.
       - name: Run test suite
-        run: pnpm test
+        run: pnpm run test:all
       - name: Verify package manifest
         run: pnpm run verify:pack
       - name: Smoke test packed binary
