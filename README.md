@@ -1,43 +1,26 @@
 # omo-profile
 
-`omo-profile` manages saved agent-model profiles for Oh My OpenAgent.
-It snapshots the `agents` and `categories` sections of the Oh My OpenAgent
-configuration, identifies matching saved profiles, previews canonical changes,
-and applies saved profiles safely.
+Switch your whole agent/model setup with one command.
 
-Requires Node.js 18 or newer.
+Oh My OpenAgent controls which model every agent and category uses, and it
+lives in one JSONC file you'd otherwise edit by hand. `omo-profile` snapshots
+just the `agents` and `categories` sections of that file into named profiles,
+so swapping setups is one command instead of a find-and-replace session.
 
-### JSONC support
-
-The active configuration is [JSONC](https://github.com/microsoft/node-jsonc-parser)
-— JSON with `//` and `/* */` comments and trailing commas. `omo-profile`
-parses JSONC and preserves comments, indentation, and newline style when it
-writes; switching a profile changes only the `agents` and `categories`
-sections and leaves everything else byte-for-byte intact.
-
-Supports Windows, macOS, and Linux. The CLI uses the same OpenCode-compatible
-configuration location on each supported desktop OS.
+Runs on Node 18+. Windows, macOS, Linux.
 
 ## Install
 
-Install the package from npm with pnpm:
-
 ```bash
 pnpm add --global omo-profile
-```
-
-Verify the installation:
-
-```bash
-omo-profile help
+# or
+npm install --global omo-profile
 ```
 
 The package exposes the `omo-profile` command through its `bin` entry.
 
-npm can also install the package if pnpm isn't available:
-
 ```bash
-npm install --global omo-profile
+omo-profile help
 ```
 
 ### Windows notes
@@ -49,162 +32,178 @@ Allow local scripts for the current user account once:
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-If a freshly installed command is not found in a new terminal, the terminal
-environment is stale: Windows PowerShell and Windows Terminal cache the
-environment from process start. Fully close and reopen the terminal, or run
-`pnpm setup` once so the pnpm global bin directory is added to PATH.
+If a freshly installed command is not found in a new terminal, fully close and
+reopen the terminal. Windows PowerShell and Windows Terminal cache the
+environment from process start. Alternatively, run `pnpm setup` once so the
+pnpm global bin directory is added to `PATH`.
 
 ### Uninstall
 
-Remove the globally installed CLI:
-
 ```bash
-pnpm uninstall --global omo-profile
+pnpm remove --global omo-profile
+# or
+npm uninstall --global omo-profile
 ```
 
 Uninstalling the CLI does not remove saved profiles or the active OpenAgent
 configuration.
 
-### Bundled starter profiles
+## Quick start
 
-The package ships starter profiles (`gpt-mix`, `gpt-terra`,
-`gpt-luna`, `deepseek-free`, `deepseek-pro`) covering common
-model routings. On
-the first `list`, `current`, `diff`, or non-dry-run `switch`, they are copied into the saved
-profiles directory. Existing profiles of the same id are never overwritten, so
-seeded profiles can be edited or deleted like any other profile.
-
-## Usage
+Save your current setup, then flip between profiles:
 
 ```bash
-# List saved profiles
-omo-profile list
-omo-profile list --json
-
-# Show every saved profile matching the active configuration
-omo-profile current
-
-# Show canonical changes needed to switch profiles
-omo-profile diff <profile-id>
-omo-profile diff <profile-id> --json
-
-# Save the current configuration as a profile
-omo-profile save <profile-id>
-
-# Preview a profile switch
-omo-profile switch gpt-mix --dry-run
-
-# Apply a profile
-omo-profile switch <profile-id>
-
-# Point the CLI at a specific configuration file
-omo-profile --config ./custom.jsonc switch <profile-id>
-omo-profile --config=./custom.jsonc current
+omo-profile list               # what's saved
+omo-profile current            # which saved profile matches your config
+omo-profile save my-setup      # snapshot current agents + categories
+omo-profile diff gpt-mix       # see exactly what switching would change
+omo-profile switch gpt-mix     # apply it
 ```
 
-Applying a profile creates a timestamped backup of the active configuration,
-replaces only `agents` and `categories`, and preserves other top-level keys.
-Restart OpenCode after switching for changes to take effect.
+`switch` backs up first, then rewrites only `agents` and `categories`.
+Everything else in your JSONC, including comments and trailing commas, stays
+byte-for-byte intact. Use `switch <id> --dry-run` to preview without writing.
+Restart OpenCode after a real switch.
 
-`current` uses sparse matching: only agent and category entries declared by a
-saved profile are compared, but every declared entry must match exactly,
-including unknown fields. `diff` and `switch --dry-run` use the same canonical
-comparison: object key order is ignored, array order remains significant, and
-dry-run never modifies the configuration or profile directory.
+`diff` and `switch --dry-run` compare canonically: object key order is ignored
+and array order is significant. `current` uses sparse matching: only entries
+declared by a profile are checked, but every declared entry must match exactly,
+including unknown fields.
 
-Profile IDs may contain letters, numbers, underscores, hyphens, and dots.
+## Safety
 
-## Lifecycle commands
+- Every real `switch` and `restore` creates a timestamped backup first.
+- Profile switching touches only `agents` and `categories`.
+- `--dry-run` never locks or writes.
+- The CLI rejects symlinked configuration, profile, and backup paths for writes.
 
-Beyond `list`, `current`, `diff`, and `switch`, the CLI manages the full
-profile and configuration lifecycle.
+## Bundled starter profiles
+
+The package ships `deepseek-free`, `deepseek-pro`, `gpt-luna`, `gpt-mix`, and
+`gpt-terra`. On the first `list`, `current`, `diff`, or non-dry-run `switch`,
+they are copied into the saved profiles directory. Existing profiles with the
+same ID are never overwritten, so seeded profiles can be edited or deleted like
+any other profile.
+
+## Command reference
+
+| Command | Key flags | What it does |
+| --- | --- | --- |
+| `list` | `--json` | List saved profiles |
+| `current` | | Show saved profiles matching the active config |
+| `diff <id>` | `--json` | Show changes a switch would make |
+| `save <id>` | `--force`, `--json` | Snapshot the active config as a profile |
+| `switch <id>` | `--dry-run`, `--json` | Apply a profile after backing up |
+| `clone <src> <dst>` | `--json` | Copy a profile |
+| `rename <old> <new>` | `--json` | Rename a profile |
+| `delete <id>` | `--yes`, `--json` | Delete a profile |
+| `backups` | `--json` | List config backups |
+| `backups prune` | `--keep <n>`, `--json` | Keep only the newest `n` backups |
+| `restore <backup-id>` | `--json` | Restore a config backup |
+| `doctor` | `--json`, `--offline` | Diagnose setup health without changing it |
+
+Global `--config <path>` (or `--config=<path>`) points to a specific config
+file and may appear anywhere on the command line. Profile IDs may contain
+letters, numbers, underscores, hyphens, and dots.
+
+## Doctor
+
+`doctor` is a read-only diagnostic. It never seeds profiles, creates backups,
+removes stale locks, or changes configuration. It checks configuration discovery
+and validity, saved profiles, active-profile matching, duplicates, model
+references, filesystem permissions, backups, temporary files, and lock state.
 
 ```bash
-# Save the active configuration as a profile
+omo-profile doctor
+omo-profile doctor --offline
+omo-profile doctor --json
+omo-profile --config ./custom.jsonc doctor --json --offline
+```
+
+- `--offline` skips OpenCode model-availability discovery while still checking
+  model references and every local diagnostic.
+- `--json` emits the raw report object with `healthy`, `summary`, and `checks`.
+- A healthy report exits `0`; a report containing failed checks exits `1`.
+  Warnings alone do not make a report unhealthy.
+
+Unlike mutating and lookup commands, `doctor --json` intentionally returns its
+diagnostic report for both healthy and unhealthy outcomes. This is the
+read-only diagnostic exception to the general JSON-output rule below: an
+unhealthy report remains available on stdout and exits `1` so automation can
+both inspect findings and detect failure.
+
+## Lifecycle details
+
+```bash
 omo-profile save <profile-id> [--force] [--json]
-
-# Copy a saved profile
 omo-profile clone <source-id> <destination-id> [--json]
-
-# Rename a saved profile
 omo-profile rename <old-id> <new-id> [--json]
-
-# Delete a saved profile
 omo-profile delete <profile-id> [--yes] [--json]
-
-# List active-configuration backups (newest first)
 omo-profile backups [--json]
-
-# Remove all but the newest N backups
-omo-profile backups prune --keep <positive integer> [--json]
-
-# Restore an active-configuration backup
+omo-profile backups prune --keep <positive-integer> [--json]
 omo-profile restore <backup-id> [--json]
 ```
 
 ### Saving and forcing
 
-`save` snapshots the active configuration's `agents` and `categories` into a
-profile. Saving over an existing profile fails with exit 4; pass `--force` to
-replace it. A forced save copies the previous profile bytes into a
-`.profile-backup-<id>-<timestamp>-<attempt>.json` file inside the profiles
-directory before replacing, so the previous version stays recoverable.
+Saving over an existing profile fails with exit `4`; pass `--force` to replace
+it. A forced save copies the previous bytes into a
+`.profile-backup-<id>-<timestamp>-<attempt>.json` file in the profiles
+directory before replacement.
 
 ### Backup IDs
 
-Every real (non-dry-run) `switch` and every `restore` creates a timestamped
-backup of the active configuration before mutating it, named
-`<config>.backup-<13-digit-UTC-ms>-<base64url-suffix>` in the config
-directory. The backup ID is the `<ms>-<suffix>` portion; `backups` lists these
-IDs newest-first and `restore <backup-id>` accepts exactly that form.
+Every real switch and restore creates
+`<config>.backup-<13-digit-UTC-ms>-<base64url-suffix>` beside the config. The
+backup ID is the `<ms>-<suffix>` portion. `backups` lists IDs newest-first, and
+`restore <backup-id>` accepts exactly that form.
 
-Backups are never pruned automatically. They remain until you run
-`backups prune --keep <n>`, which deletes all but the newest `n` backups.
-`--keep` must be a positive integer; any other value exits 2 before mutation.
+Backups are never pruned automatically. `backups prune --keep <n>` deletes all
+but the newest `n`; `--keep` must be a positive integer.
 
 ### Confirmation
 
-`delete` refuses to run non-interactively unless `--yes` is given: with a
-non-TTY stdin and no `--yes` it exits 2 without touching the profile. In an
-interactive terminal it prompts `Delete profile "<id>"? [y/N]`; only `y`/`yes`
-deletes, and any other response (including EOF) leaves the profile untouched
-and exits 0. Deleting a profile never modifies the active configuration.
+`delete` refuses to run non-interactively unless `--yes` is given. In an
+interactive terminal it prompts `Delete profile "<id>"? [y/N]`; only `y` or
+`yes` deletes. Any other response, including EOF, leaves the profile untouched
+and exits `0`. Deleting a profile never modifies the active configuration.
 
 ### JSON output contract
 
-Every successful command accepts `--json` and emits exactly one machine-readable
-`{ "ok": true, ... }` object on stdout (for example `list` adds `profiles`,
-`save` adds `profileId` and, on `--force`, `backupPath`, `switch` adds
-`backupId`). Diagnostics and error messages go only to stderr, and a failed
-command writes nothing to stdout. `delete --json` additionally requires
-`--yes`.
+Successful commands accepting `--json` emit exactly one machine-readable
+`{ "ok": true, ... }` object on stdout. Diagnostics and errors go to stderr,
+and failed commands normally write nothing to stdout. `delete --json` also
+requires `--yes`.
+
+`doctor` is the explicit exception: because its result is a diagnostic report,
+`doctor --json` writes raw report JSON on healthy and unhealthy outcomes, with
+exit `0` and `1` respectively.
 
 ### Locking and symlinks
 
-Profile mutations (`save`, `clone`, `rename`, `delete`) serialize on a local
-`.omo-profile.lock` file in the profiles directory; configuration mutations
-(`switch`, `backup`, `prune`, `restore`) serialize on the same lock file in
-the configuration's directory. Dry-run operations never lock and never write.
+Profile mutations serialize on `.omo-profile.lock` in the profiles directory;
+configuration mutations serialize on the same filename in the configuration
+directory. Dry-run and doctor operations never lock or write.
 
 The CLI never follows symlinks for writes. A symlinked configuration file,
-profile path, profile directory, or backup path is rejected before any
-mutation with exit 5.
+profile path, profile directory, or backup path is rejected before mutation
+with exit `5`.
 
 ### Exit codes
 
 | Code | Meaning |
 | --- | --- |
-| 0 | Success |
-| 1 | Unexpected / internal failure |
-| 2 | Argument or confirmation error (invalid grammar or ID, unknown command, `delete` without `--yes`, `--json` without `--yes`, invalid `--keep`) |
-| 3 | Missing (profile, backup, or configuration not found) |
-| 4 | Already exists (profile or destination collision) |
-| 5 | Invalid or unsafe (malformed profile/config, symlinked or unsafe path) |
-| 6 | Lock unavailable (could not acquire the local mutation lock) |
+| 0 | Success or healthy doctor report |
+| 1 | Unexpected failure or unhealthy doctor report |
+| 2 | Argument or confirmation error |
+| 3 | Profile, backup, or configuration missing |
+| 4 | Profile or destination already exists |
+| 5 | Invalid, malformed, symlinked, or unsafe path |
+| 6 | Mutation lock unavailable |
 
 ## File locations
 
-The active configuration is discovered in this order of preference:
+The active configuration is discovered in this order:
 
 | Priority | Filename |
 | --- | --- |
@@ -219,19 +218,11 @@ The active configuration is discovered in this order of preference:
 | Saved profiles | `~/.config/opencode/omo-profiles/` |
 | Profile format | `<profile-id>.json` |
 
-The first existing file wins. If none exist, the CLI reports the checked
-locations and exits. On Windows the primary configuration directory is
-`%APPDATA%\opencode` with `~/.config/opencode` tried as a fallback; on macOS
-and Linux it is `~/.config/opencode`.
-
-The package ships these as bundled starter profiles; see the
-[Bundled starter profiles](#bundled-starter-profiles) section.
+The first existing file wins. On Windows, the primary configuration directory
+is `%APPDATA%\opencode`, with `~/.config/opencode` as fallback. macOS and Linux
+use `~/.config/opencode`.
 
 ## Environment overrides
-
-Use literal `OMO_CONFIG_PATH` and `OMO_PROFILES_DIR` values to point the CLI at
-alternate files or directories. These are explicit overrides, not alternate
-default locations.
 
 ```bash
 OMO_CONFIG_PATH=/path/to/oh-my-openagent.json \
@@ -239,80 +230,62 @@ OMO_PROFILES_DIR=/path/to/profiles \
 omo-profile list
 ```
 
-```bash
-omo-profile --config ./custom.jsonc current
-```
+Supported variables:
 
-PowerShell examples preserve paths containing spaces by assigning each literal
-path before invoking the command:
+- `OMO_CONFIG_PATH` overrides the discovered active configuration.
+- `OMO_CONFIG` aliases `--config` and takes precedence over `OMO_CONFIG_PATH`.
+- `OMO_CONFIG_DIR` overrides the directory scanned for config filenames.
+- `OMO_PROFILES_DIR` overrides the saved profiles directory.
+- `OMO_BUNDLED_PROFILES_DIR` overrides the bundled starter profiles directory.
+
+Active configuration precedence:
+
+1. `--config <path>`
+2. `OMO_CONFIG`
+3. `OMO_CONFIG_PATH`
+4. Filename auto-discovery in the config directory
+
+PowerShell examples can preserve paths containing spaces by assigning literals:
 
 ```powershell
 $env:OMO_CONFIG_PATH = Join-Path $HOME 'OpenCode Config/oh-my-openagent.json'
 $env:OMO_PROFILES_DIR = Join-Path $HOME 'OpenCode Profiles'
 omo-profile list
-```
-
-Clear the session overrides when finished:
-
-```powershell
 Remove-Item Env:OMO_CONFIG_PATH, Env:OMO_PROFILES_DIR -ErrorAction SilentlyContinue
 ```
 
-Supported variables:
-
-- `OMO_CONFIG_PATH` overrides the active configuration path (discovery-level
-  override; equivalent to `--config`).
-- `OMO_CONFIG` alias for `--config`; takes precedence over `OMO_CONFIG_PATH`
-  and auto-discovery, but `--config` wins over both.
-- `OMO_CONFIG_DIR` overrides the directory scanned for the configuration
-  filenames above.
-- `OMO_PROFILES_DIR` overrides the saved profiles directory.
-- `OMO_BUNDLED_PROFILES_DIR` overrides the bundled starter profiles directory.
-
-Precedence for the active configuration:
-
-1. `--config <path>` flag
-2. `OMO_CONFIG` environment variable
-3. `OMO_CONFIG_PATH` environment variable
-4. Auto-discovery of the filenames above in the config directory
-
-The `--config` flag accepts either `--config <path>` or `--config=<path>` and
-may appear anywhere on the command line, making it useful for CI:
-
 ## Development
-
-Run the test suite:
 
 ```bash
 pnpm test
-```
-
-Run the CLI without installing it globally:
-
-```bash
+pnpm run test:int
+pnpm run test:all
+pnpm run verify:pack
+pnpm run smoke:packed
 node agent-profile.mjs <command>
 ```
 
 ## Release
 
-Releases use a protected tag named `v<package-version>`, such as `v2.0.0`,
-after all required checks pass. Verify the package name and npm ownership or
-availability before tagging.
+Releases use a protected tag named `v<package-version>`, such as `v2.1.0`,
+after all required checks pass. Verify package-name ownership or availability
+before tagging.
 
 ```bash
 pnpm test
+pnpm run test:all
 pnpm run verify:pack
 pnpm run smoke:packed
-git tag v2.0.0
-git push origin v2.0.0
+git tag v2.1.0
+git push origin v2.1.0
 ```
 
 Repository administrators must protect `v*` tags before using this release
 path. Configure npm trusted publishing for this repository and the
 `npm-release` environment so the workflow can use OIDC. If trusted publishing
-is unavailable, repository administrators may provide `NPM_TOKEN` as a masked
-repository secret; the workflow still publishes with provenance. Do not
-publish from a branch or from an unprotected tag.
+is unavailable, administrators may provide `NPM_TOKEN` as a masked repository
+secret; the workflow still publishes with provenance. Do not publish from a
+branch or an unprotected tag.
 
 ## License
 
