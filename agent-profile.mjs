@@ -7,6 +7,7 @@ import {
   cmdSave, cmdSwitch,
 } from './lib/cli/lifecycle-commands.mjs';
 import { cmdCurrent, cmdDiff, cmdList } from './lib/cli/read-commands.mjs';
+import { cmdDoctor } from './lib/cli/doctor-command.mjs';
 
 function help() {
   console.log(`Usage: node agent-profile.mjs <command> [options]
@@ -36,6 +37,8 @@ Commands:
                              Restore an active-config backup
   switch <id> [--dry-run] [--json]
                              Apply profile <id> to active config
+  doctor [--json] [--offline]
+                             Diagnose profile setup health (read-only)
   help                      Show this help message
 
 Environment:
@@ -95,6 +98,12 @@ async function dispatch(rest, explicitConfig) {
     case 'backups': return dispatchBackups(rest, explicitConfig);
     case 'restore': assertExactArgs(rest, ['restore', '<backup-id>'], ['--json']); return cmdRestore(rest[1], rest.includes('--json'), explicitConfig);
     case 'switch': assertExactArgs(rest, ['switch', '<id>'], ['--dry-run', '--json']); return cmdSwitch(rest[1], rest.includes('--dry-run'), rest.includes('--json'), explicitConfig);
+    case 'doctor': {
+      assertExactArgs(rest, ['doctor'], ['--json', '--offline']);
+      const report = await cmdDoctor({ showJson: rest.includes('--json'), offline: rest.includes('--offline'), explicitConfig });
+      if (!report.healthy) process.exitCode = 1;
+      return;
+    }
     default: throw new ArgumentError(`Unknown command: "${command}". Use "help" for usage.`);
   }
 }
